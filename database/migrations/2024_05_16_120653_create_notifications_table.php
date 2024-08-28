@@ -16,15 +16,10 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->string('title');
+            $table->morphs('notifiable');
+            // $table->text('data')->nullable();
             $table->text('description');
             $table->boolean('is_read')->default(false);
-             $table->foreignIdFor(User::class)
-                ->references('id')
-                ->on('users')
-                ->cascadeOnUpdate()
-                ->cascadeOnDelete();
-
-
         });
     }
 

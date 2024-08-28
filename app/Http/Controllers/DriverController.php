@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\GeneraleHelper;
 use App\Models\Driver;
 use App\Http\Requests\StoreDriverRequest;
 use App\Http\Requests\UpdateDriverRequest;
+use App\Http\Resources\DriverResource;
+use App\Mail\DriverPasswordMail;
 use App\Models\User;
 use App\Services\DriverService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class DriverController extends Controller
 {
-    private Driver $driverModel;
+    private User $driverModel;
     private DriverService $driverService;
 
-    public function __construct(DriverService $driverService, Driver $driverModel, private User $userModel)
+    public function __construct(DriverService $driverService, User $driverModel)
     {
         $this->driverService = $driverService;
         $this->driverModel = $driverModel;
@@ -26,7 +30,8 @@ class DriverController extends Controller
     public function index(Request $request)
     {
         $filters = $request->only(['low', 'high', 'rating', 'place']);
-        return $this->driverService->getAll($this->driverModel, $filters);
+        $collections = $this->driverService->getAll($this->driverModel, $filters);
+        return DriverResource::collection($collections);
     }
     /*$filter = $request->query('filter');
 
@@ -49,15 +54,19 @@ class DriverController extends Controller
      */
     public function store(StoreDriverRequest $request)
     {
-        $user = $this->userModel::create($request->validated());
-        $driver = $this->driverService->create(
-            $request->except(['driver_name', 'driver_image', 'image', 'name']) + [
-                'image' => isset($request->validated()['driver_image']) ?? 'test.png',
-                'name' => $request->validated()['driver_name'],
-                'user_id' => $user->id
-            ],
-            $this->driverModel,
+
+        $driverData = $request->all();
+        if($request->driver_image){
+            $driverData['driver_image'] = GeneraleHelper::uploadFile($request, 'driver_images', 'driver_image');
+        }
+        if($request->image){
+            $driverData['image'] = GeneraleHelper::uploadFile($request, 'user_images', 'image');
+        }
+
+        $driver = $this->driverService->create($driverData,
+            new Driver(),
         );
+        Mail::to($driver->user->email)->send(new DriverPasswordMail($driver, $driverData['password']));
 
         return response($driver);
     }
@@ -73,31 +82,39 @@ class DriverController extends Controller
                 "message" => "Not Found",
             ], 404);
         }
-        return response($driver);
+        return response(new DriverResource($driver));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateDriverRequest $request, int $id)
     {
-        $driver = $this->driverService->getById($id, $this->driverModel);
+        // Fetch the Driver model
+        $driver = Driver::find($id);
+
         if (!$driver) {
             return response([
                 "message" => "Not Found",
             ], 404);
         }
-        $user = $this->userModel::where('id', $driver->user_id)->first();
-        $user->update($request->validated());
+
+        // Handle file uploads
+        $driverData = json_decode($request->getContent(), true);
+
+        $driverData['driver_image'] = GeneraleHelper::uploadFile($request, 'driver_images', 'driver_image');
+        $driverData['image'] = GeneraleHelper::uploadFile($request, 'user_images', 'image');
+
+        // Update the Driver model with validated data
+        $driver->update($driverData);
+
+        // Update the associated User model
         $this->driverService->edit(
-            $driver,
+            $driver, // Pass the Driver model
             $request->except(['driver_name', 'driver_image', 'image', 'name']) + [
-                'image' => isset($request->validated()['driver_image']) ?? 'test.png',
-                'name' => $request->validated()['driver_name'],
-                'user_id' => $user->id
+                'image' => isset($driverData['driver_image']) ? $driverData['driver_image'] : $driver->user->image,
+                'name' => $driverData['driver_name'],
             ]
         );
-        return response($driver);
+
+        return response($driver->load('user'));
     }
 
     /**

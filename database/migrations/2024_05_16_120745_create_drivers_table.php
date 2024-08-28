@@ -18,11 +18,6 @@ return new class extends Migration
              $table->string('name');
              $table->decimal('price', 8, 2)->default(0);
              $table->string('image')->nullable();
-             $table->foreignIdFor(User::class)
-                ->references('id')
-                ->on('users')
-                ->cascadeOnUpdate()
-                ->cascadeOnDelete();
              $table->foreignIdFor(Place::class)
                 ->references('id')
                 ->on('places')

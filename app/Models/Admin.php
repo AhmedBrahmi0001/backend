@@ -8,12 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 class Admin extends Model
 {
     use HasFactory;
-     use HasFactory;
-     protected $fillable = [
-        'user_id',
+
+    protected $with = [
+        'user'
     ];
-     public function user()
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\MorphOne
+     */
+    public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->morphOne('App\Models\User', 'userable')->without('userable');;
     }
 }

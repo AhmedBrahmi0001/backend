@@ -2,14 +2,15 @@
 
 namespace Database\Factories;
 
-use App\Models\User;
+use App\Models\Driver;
+use App\Models\Client;
+use App\Models\Notification;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Notification>
- */
 class NotificationFactory extends Factory
 {
+    protected $model = Notification::class;
+
     /**
      * Define the model's default state.
      *
@@ -17,11 +18,18 @@ class NotificationFactory extends Factory
      */
     public function definition(): array
     {
+        // Choose randomly between Driver and Client
+        $notifiableType = $this->faker->randomElement([Driver::class, Client::class]);
+
+        // Create a notifiable entity (Driver or Client)
+        $notifiable = $notifiableType::factory()->create();
+
         return [
-            'title' =>fake()->sentence(),
-            'description'=>fake()->text(),
-            'is_read' =>fake()->boolean(),
-            'user_id' => User::factory()->create()->id,
+            'title' => $this->faker->sentence(),
+            'description' => $this->faker->text(),
+            'is_read' => $this->faker->boolean(),
+            'notifiable_id' => $notifiable->id,
+            'notifiable_type' => $notifiableType,
         ];
     }
 }

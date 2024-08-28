@@ -5,14 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Admin;
 use App\Http\Requests\StoreAdminRequest;
 use App\Http\Requests\UpdateAdminRequest;
+use App\Models\User;
 use App\Services\AdminService;
 use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
-{ private Admin $adminModel;
+{
+    private User $adminModel;
     private AdminService $adminService;
 
-    public function __construct(AdminService $adminService, Admin $adminModel)
+    public function __construct(AdminService $adminService, User $adminModel)
     {
         $this->adminService = $adminService;
         $this->adminModel = $adminModel;
@@ -23,22 +25,22 @@ class AdminController extends Controller
      */
     public function index()
     {
-        return $this->adminModel::paginate(10);
+        return $this->adminService->getAll($this->adminModel);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreAdminRequest $request)
     {
         try {
-        $admin = $this->adminService->create(
-            $request->validated(),
-            $this->adminModel,
-        );
-        return response($admin);
+            $admin = $this->adminService->create(
+                $request->validated(),
+                new Admin()  // Pass a new Admin instance to the service
+            );
+            return response($admin);
         } catch (\Exception $exception) {
             Log::error($exception->getMessage());
+            return response([
+                'message' => 'Failed to create admin.'
+            ], 500);
         }
     }
 
@@ -50,7 +52,7 @@ class AdminController extends Controller
         $admin = $this->adminService->getById($id, $this->adminModel);
         if (!$admin) {
             return response([
-                "message" => "Not Found",
+                'message' => 'Not Found',
             ], 404);
         }
         return response($admin);
@@ -64,13 +66,13 @@ class AdminController extends Controller
         $admin = $this->adminService->getById($id, $this->adminModel);
         if (!$admin) {
             return response([
-                "message" => "Not Found",
+                'message' => 'Not Found',
             ], 404);
         }
 
         $this->adminService->edit(
             $admin,
-            $request->validated(),
+            $request->validated()
         );
         return response($admin);
     }
@@ -83,15 +85,13 @@ class AdminController extends Controller
         $admin = $this->adminService->getById($id, $this->adminModel);
         if (!$admin) {
             return response([
-                "message" => "Not Found",
+                'message' => 'Not Found',
             ], 404);
         }
 
-        $this->adminService->delete(
-            $admin,
-        );
+        $this->adminService->delete($admin, $id);
         return response([
-            "message" => "success",
+            'message' => 'success',
         ]);
     }
 }

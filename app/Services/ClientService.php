@@ -1,46 +1,55 @@
 <?php
-
 namespace App\Services;
 
+use App\Helpers\GeneraleHelper;
 use App\Models\Client;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Hash;
 
 class ClientService
 {
-
-    public function create(array $data, Client $clientModel): Client
+    public function create(array $data, Client $ClientModel): Client
     {
-        return $clientModel::create($this->data($data));
+        $Client = $ClientModel::create();
+        // Create the user and associate it with the Client model
+        GeneraleHelper::createUser($data, $Client);
+        return $Client;
     }
 
 
-    public function edit(Client $client, array $data): void
+    public function edit(User $Client, array $data): void
     {
-        $client->update($this->data($data));
+        $Client->update($this->updatedData($data, $Client));
     }
 
-
-    public function delete(Client $client): void
+    public function delete(User $Client, $id): void
     {
-        $client->delete();
+        $ClientClass = Client::find($id);
+        if ($ClientClass) {
+            $ClientClass->delete();
+        }
+
+        $Client->delete();
     }
 
-
-    public function getById(int $id, Client $clientModel)
+    public function getById(int $id, User $ClientModel)
     {
-        return $clientModel::where('id', $id)->first();
+        return $ClientModel::where('userable_type', 'App\Models\Client')->where('userable_id', $id)->first();
     }
 
-    public function getAll(Client $clientModel): Collection
+    public function getAll(User $ClientModel)
     {
-        return $clientModel::all();
+        return $ClientModel::where('userable_type', 'App\Models\Client')->paginate(10);
     }
 
-    public function data($data): array
+    public function updatedData($data, $model): array
     {
-        return
-            [
-                'user_id' => $data['user_id'],
-            ];
+        return [
+            'name' =>array_key_exists('name',$data) ? $data['name'] : $model->name,
+            'email' => array_key_exists('email',$data) ? $data['email'] : $model->email,
+            'password' => array_key_exists('password',$data) ? Hash::make($data['password']) : $model->password,
+            'phone_number' => array_key_exists('phone_number',$data) ? $data['phone_number'] : $model->phone_number, // Optional field
+        ];
     }
 }

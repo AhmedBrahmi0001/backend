@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Driver;
 use Illuminate\Database\Seeder;
 
 
@@ -13,7 +13,8 @@ class DriverSeeder extends Seeder
      */
     public function run(): void
     {
-                     \App\Models\Driver::factory(10)->create();
-
+        Driver::factory()
+            ->count(10)
+            ->create();
     }
 }

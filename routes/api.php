@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\NotificationController;
@@ -55,10 +56,9 @@ use Illuminate\Support\Facades\Route;
     Route::resource('payments', PaymentController::class);
     Route::resource('categories', CategoryController::class);
     Route::resource('places', PlaceController::class);
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
-
-
-
+    Route::get('/weekly-statistics', [DashboardController::class, 'weeklyStatistics']);
 
     Route::get('categories/filter-by-price', [CategoryController::class, 'filterByPriceRange']);
     Route::put('notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead']);

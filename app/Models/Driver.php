@@ -9,20 +9,16 @@ class Driver extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'user_id',
         'place_id',
         'name',
         'price',
         'image',
         'rating'
     ];
-    protected $with = [
-        'user'
-    ];
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->morphOne('App\Models\User', 'userable')->without('userable');;
     }
 
     public function evaluations() {

@@ -7,15 +7,17 @@ use App\Http\Requests\StoreClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Models\User;
 use App\Services\ClientService;
+use Illuminate\Support\Facades\Log;
 
 class ClientController extends Controller
 {
+    private User $ClientModel;
+    private ClientService $ClientService;
 
-    public function __construct(
-        private ClientService $clientService,
-        private Client $clientModel,
-        private User $userModel
-    ) {
+    public function __construct(ClientService $ClientService, User $ClientModel)
+    {
+        $this->ClientService = $ClientService;
+        $this->ClientModel = $ClientModel;
     }
 
     /**
@@ -23,23 +25,23 @@ class ClientController extends Controller
      */
     public function index()
     {
-        return $this->clientModel::paginate(100);
+        return $this->ClientService->getAll($this->ClientModel);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreClientRequest $request)
     {
-        $user = $this->userModel::create($request->validated());
-        $client = $this->clientService->create(
-            $request->validated() + [
-                'user_id' => $user->id
-            ],
-            $this->clientModel,
-        );
-
-        return response($client);
+        try {
+            $Client = $this->ClientService->create(
+                $request->validated(),
+                new Client()  // Pass a new Client instance to the service
+            );
+            return response($Client);
+        } catch (\Exception $exception) {
+            Log::error($exception->getMessage());
+            return response([
+                'message' => 'Failed to create Client.'
+            ], 500);
+        }
     }
 
     /**
@@ -47,13 +49,13 @@ class ClientController extends Controller
      */
     public function show(int $id)
     {
-        $client = $this->clientService->getById($id, $this->clientModel);
-        if (!$client) {
+        $Client = $this->ClientService->getById($id, $this->ClientModel);
+        if (!$Client) {
             return response([
-                "message" => "Not Found",
+                'message' => 'Not Found',
             ], 404);
         }
-        return response($client);
+        return response($Client);
     }
 
     /**
@@ -61,19 +63,18 @@ class ClientController extends Controller
      */
     public function update(UpdateClientRequest $request, int $id)
     {
-        $client = $this->clientService->getById($id, $this->clientModel);
-        if (!$client) {
+        $Client = $this->ClientService->getById($id, $this->ClientModel);
+        if (!$Client) {
             return response([
-                "message" => "Not Found",
+                'message' => 'Not Found',
             ], 404);
         }
-        $user = $this->userModel::find($client->user_id);
-        $user->update($request->validated());
-        // $this->clientService->edit(
-        //     $client,
-        //     $request->validated(),
-        // );
-        return response($client);
+
+        $this->ClientService->edit(
+            $Client,
+            $request->validated()
+        );
+        return response($Client);
     }
 
     /**
@@ -81,18 +82,16 @@ class ClientController extends Controller
      */
     public function destroy(int $id)
     {
-        $client = $this->clientService->getById($id, $this->clientModel);
-        if (!$client) {
+        $Client = $this->ClientService->getById($id, $this->ClientModel);
+        if (!$Client) {
             return response([
-                "message" => "Not Found",
+                'message' => 'Not Found',
             ], 404);
         }
 
-        $this->clientService->delete(
-            $client,
-        );
+        $this->ClientService->delete($Client, $id);
         return response([
-            "message" => "success",
+            'message' => 'success',
         ]);
     }
 }

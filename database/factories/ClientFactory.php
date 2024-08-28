@@ -2,23 +2,28 @@
 
 namespace Database\Factories;
 
+use App\Models\Client;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Client>
- */
 class ClientFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
-    public function definition(): array
+    protected $model = Client::class;
+
+    public function definition()
     {
         return [
-            'user_id'=> User::factory()->create()->id,
         ];
+    }
+
+    public function configure()
+    {
+        return $this->afterCreating(function (Client $client) {
+            $user = User::factory()->make([
+                'userable_id' => $client->id,
+                'userable_type' => Client::class,
+            ]);
+            $client->user()->save($user);
+        });
     }
 }

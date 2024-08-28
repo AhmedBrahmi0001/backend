@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RegisterRequest;
+use App\Models\Admin;
 use App\Models\Client;
 use App\Models\Driver;
 use Illuminate\Http\JsonResponse;
@@ -16,36 +17,48 @@ class AuthenticationController extends BaseController
     /**
      * Login api
      *
+     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function login(Request $request): JsonResponse
     {
+        // Validate incoming request
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required'
+        ]);
+
+        // Attempt to authenticate the user
         if (!Auth::attempt($request->only('email', 'password'))) {
-            return $this->sendError('Unauthorised');
+            return $this->sendError('Unauthorized', 401);
         }
 
-        $user = Auth::user();
-        $user = User::find($user->id);
+        $user = User::find(Auth::id());
+
+        // Determine the role of the user based on the polymorphic relation
         $role = '';
-        $driver = Driver::where('user_id', $user->id)->get();
-        if($driver){
+        $userable = $user->userable; // Get the related model
+
+        if ($userable instanceof Driver) {
             $role = 'DRIVER';
-        }
-        $client = Client::where('user_id', $user->id)->get();
-        if($client){
+        } elseif ($userable instanceof Client) {
             $role = 'CLIENT';
+        } elseif ($userable instanceof Admin) {
+            return $this->sendError('Unauthorized', 403); // Admins are not allowed
         }
-        if ($user->name == 'admin') {
-            return $this->sendError('Unauthorised');
-        }
-        $response['id'] =  $user->id;
-        $response['email'] =  $user->email;
-        $response['name'] =  $user->name;
-        $response['role'] =  $role;
-        $response['accessToken'] = $user->refreshOrCreateToken();
+
+        // Prepare the response data
+        $response = [
+            'id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
+            'role' => $role,
+            'accessToken' => $user->refreshOrCreateToken(),
+        ];
 
         return $this->sendResponse($response, 'User logged in successfully.');
     }
+
 
     /**
      * Login api
@@ -57,9 +70,9 @@ class AuthenticationController extends BaseController
         if (!Auth::attempt($request->only('email', 'password'))) {
             return $this->sendError('Unauthorised');
         }
-        $user = Auth::user();
-        $user = User::find($user->id);
-        if($user->name !== 'admin'){
+        $user = User::find(Auth::id());
+        $userable = $user->userable;
+        if($userable instanceof Driver){
             return $this->sendError('Unauthorised');
         }
         $response['id'] =  $user->id;
@@ -112,34 +125,40 @@ class AuthenticationController extends BaseController
 
         return $this->sendResponse($response, 'User logged out successfully');
     }
-
     /**
-     * Register and login user
-     *
-     * @param RegisterRequest $request
-     * @return JsonResponse
-     */
+ * Register and login user
+ *
+ * @param RegisterRequest $request
+ * @return JsonResponse
+ */
     public function register(RegisterRequest $request): JsonResponse
     {
-        // Create the user
-        $user = User::create([
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
-            'password' => Hash::make($request->input('password')),
-            'phone_number' => $request->input('phone_number'),
+        // Create a new Client instance
+        $client = Client::create([
+            // Add other Client-specific fields here if needed
         ]);
+
+        // Create a new User instance
+        $user = new User();
+        $user->name = $request->input('name');
+        $user->email = $request->input('email');
+        $user->password = Hash::make($request->input('password'));
+        $user->phone_number = $request->input('phone_number');
+
+        // Set the userable_id and userable_type explicitly
+        $user->userable_id = $client->id;
+        $user->userable_type = Client::class; // or 'App\Models\Client' if you're not using class-based references
+
+        // Save the user with the associated client
+        $user->save();
 
         // Log the user in
         Auth::login($user);
 
-        // Check if the user is an admin
-        if ($user->name === 'admin') {
-            return $this->sendError('Unauthorized');
-        }
-
-        // Generate a token if using Sanctum
+        // Generate an access token
         $token = $user->refreshOrCreateToken();
 
+        // Prepare the response
         $response = [
             'id' => $user->id,
             'email' => $user->email,
@@ -148,7 +167,7 @@ class AuthenticationController extends BaseController
             'accessToken' => $token,
         ];
 
+        // Return the response
         return $this->sendResponse($response, 'User registered and logged in successfully.');
     }
-
 }

@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-         \App\Models\User::factory(10)->create();
+        //  \App\Models\User::factory(10)->create();
          $this->call(
             [
                 PlaceSeeder::class,
@@ -26,15 +26,7 @@ class DatabaseSeeder extends Seeder
                 PaymentSeeder::class,
                 OrderSeeder::class,
                 EvaluationSeeder::class,
-
-
-
-
-
             ]
             );
-
-
-
     }
 }

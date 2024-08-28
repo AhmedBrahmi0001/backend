@@ -44,7 +44,16 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
-        /**
+
+    /**
+     * @return MorphTo
+     */
+    public function userable()
+    {
+        return $this->morphTo();
+    }
+
+    /**
      * Refresh or create token for this model
      *
      * @return string
